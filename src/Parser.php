@@ -35,7 +35,13 @@ class Parser
         T::T_AND               => 3,
         T::T_COMPARATOR        => 5,
         T::T_FLATTEN           => 9,
+        T::T_PLUS              => 10,
+        T::T_MINUS             => 10,
         T::T_STAR              => 20,
+        T::T_MULTIPLY          => 20,
+        T::T_MODULO            => 20,
+        T::T_DIVIDE            => 20,
+        T::T_DIV               => 20,
         T::T_FILTER            => 21,
         T::T_DOT               => 40,
         T::T_NOT               => 45,
@@ -107,6 +113,26 @@ class Parser
         $token = $this->token;
         $this->next();
         return ['type' => 'field', 'value' => $token['value']];
+    }
+
+    private function nud_minus()
+    {
+        return $this->nud_arithmetic(T::T_MINUS);
+    }
+
+    private function nud_plus()
+    {
+        return $this->nud_arithmetic(T::T_PLUS);
+    }
+
+    private function nud_arithmetic($op)
+    {
+        $this->next();
+        return [
+            'type' => 'arithmetic_unary',
+            'children' => [$this->expr(self::$bp[$op])],
+            'value' => $op
+        ];
     }
 
     private function nud_quoted_identifier()
@@ -240,6 +266,51 @@ class Parser
         return [
             'type'     => 'subexpression',
             'children' => [$left, $this->parseDot(self::$bp[T::T_DOT])]
+        ];
+    }
+
+    private function led_plus(array $left)
+    {
+        return $this->led_arithmetic($left, T::T_PLUS);
+    }
+
+    private function led_star(array $left)
+    {
+        return $this->led_arithmetic($left, T::T_STAR);
+    }
+
+    private function led_divide(array $left)
+    {
+        return $this->led_arithmetic($left, T::T_DIVIDE);
+    }
+
+    private function led_div(array $left)
+    {
+        return $this->led_arithmetic($left, T::T_DIV);
+    }
+
+    private function led_minus(array $left)
+    {
+        return $this->led_arithmetic($left, T::T_MINUS);
+    }
+
+    private function led_multiply(array $left)
+    {
+        return $this->led_arithmetic($left, T::T_MULTIPLY);
+    }
+
+    private function led_modulo(array $left)
+    {
+        return $this->led_arithmetic($left, T::T_MODULO);
+    }
+
+    private function led_arithmetic(array $left, $op)
+    {
+        $this->next();
+        return [
+            'type' => 'arithmetic',
+            'children' => [$left, $this->expr(self::$bp[$op])],
+            'value' => $op
         ];
     }
 

@@ -1,6 +1,8 @@
 <?php
 namespace JmesPath;
 
+use JmesPath\Lexer as T;
+
 /**
  * Tree visitor used to evaluates JMESPath AST expressions.
  */
@@ -9,6 +11,8 @@ class TreeInterpreter
     /** @var callable */
     private $fnDispatcher;
 
+
+    private $arithmetic;
     /**
      * @param callable|null $fnDispatcher Function dispatching function that accepts
      *                                    a function name argument and an array of
@@ -17,6 +21,15 @@ class TreeInterpreter
     public function __construct(callable $fnDispatcher = null)
     {
         $this->fnDispatcher = $fnDispatcher ?: FnDispatcher::getInstance();
+        $this->arithmetic = [
+            T::T_STAR => function($left, $right) { return $left * $right; },
+            T::T_MULTIPLY => function($left, $right) { return $left * $right; },
+            T::T_PLUS => function($left, $right) { return $left + $right; },
+            T::T_MINUS => function($left, $right) { return $left - $right; },
+            T::T_MODULO => function($left, $right) { return $left % $right; },
+            T::T_DIV => function($left, $right) { return intdiv($left, $right); },
+            T::T_DIVIDE => function($left, $right) { return $left / $right; },
+        ];
     }
 
     /**
@@ -209,6 +222,14 @@ class TreeInterpreter
                 return function ($value) use ($apply) {
                     return $this->visit($apply, $value);
                 };
+
+            case 'arithmetic':
+                $operation = $this->arithmetic[$node['value']];
+                return $operation($this->dispatch($node['children'][0], $value), $this->dispatch($node['children'][1], $value));
+
+            case 'arithmetic_unary':
+                $operation = $this->arithmetic[$node['value']];
+                return $operation(0, $this->dispatch($node['children'][0], $value));
 
             default:
                 throw new \RuntimeException("Unknown node type: {$node['type']}");

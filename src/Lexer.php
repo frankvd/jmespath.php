@@ -31,6 +31,12 @@ class Lexer
     const T_LITERAL = 'literal';
     const T_EOF = 'eof';
     const T_COMPARATOR = 'comparator';
+    const T_PLUS = 'plus';
+    const T_MINUS = 'minus';
+    const T_DIV = 'div';
+    const T_DIVIDE = 'divide';
+    const T_MULTIPLY = 'multiply';
+    const T_MODULO = 'modulo';
 
     const STATE_IDENTIFIER = 0;
     const STATE_NUMBER = 1;
@@ -46,6 +52,7 @@ class Lexer
     const STATE_EQ = 11;
     const STATE_NOT = 12;
     const STATE_AND = 13;
+    const STATE_MINUS = 14;
 
     /** @var array We know what token we are consuming based on each char */
     private static $transitionTable = [
@@ -59,7 +66,6 @@ class Lexer
         '`'  => self::STATE_JSON_LITERAL,
         '"'  => self::STATE_QUOTED_STRING,
         "'"  => self::STATE_STRING_LITERAL,
-        '-'  => self::STATE_NUMBER,
         '0'  => self::STATE_NUMBER,
         '1'  => self::STATE_NUMBER,
         '2'  => self::STATE_NUMBER,
@@ -76,6 +82,13 @@ class Lexer
         "\r" => self::STATE_WHITESPACE,
         '.'  => self::STATE_SINGLE_CHAR,
         '*'  => self::STATE_SINGLE_CHAR,
+        '+'  => self::STATE_SINGLE_CHAR,
+        '-'  => self::STATE_MINUS,
+        '−'  => self::STATE_MINUS,
+        '/'  => self::STATE_SINGLE_CHAR,
+        '%'  => self::STATE_SINGLE_CHAR,
+        '÷'  => self::STATE_SINGLE_CHAR,
+        '×'  => self::STATE_SINGLE_CHAR,
         ']'  => self::STATE_SINGLE_CHAR,
         ','  => self::STATE_SINGLE_CHAR,
         ':'  => self::STATE_SINGLE_CHAR,
@@ -174,6 +187,14 @@ class Lexer
         ')' => self::T_RPAREN,
         '{' => self::T_LBRACE,
         '}' => self::T_RBRACE,
+        '+' => self::T_PLUS,
+        '−' => self::T_MINUS,
+        '-' => self::T_MINUS,
+        '÷' => self::T_DIVIDE,
+        '/' => self::T_DIVIDE,
+        '//' => self::T_DIV,
+        '×' => self::T_MULTIPLY,
+        '%' => self::T_MODULO
     ];
 
     /**
@@ -193,7 +214,7 @@ class Lexer
             goto eof;
         }
 
-        $chars = str_split($input);
+        $chars = mb_str_split($input);
 
         while (false !== ($current = current($chars))) {
 
@@ -210,12 +231,24 @@ class Lexer
 
             $state = self::$transitionTable[$current];
 
+            if ($state === self::STATE_MINUS) {
+                $pos = key($chars);
+                if (self::$transitionTable[$chars[$pos+1]] == self::STATE_NUMBER) {
+                    $state = self::STATE_NUMBER;
+                } else {
+                    $state = self::STATE_SINGLE_CHAR;
+                }
+            }
             if ($state === self::STATE_SINGLE_CHAR) {
-
+                $pos = key($chars);
+                if ($current === '/' && $chars[$pos + 1] === '/') {
+                    next($chars);
+                    $current = '//';
+                }
                 // Consume simple tokens like ".", ",", "@", etc.
                 $tokens[] = [
                     'type'  => $this->simpleTokens[$current],
-                    'pos'   => key($chars),
+                    'pos'   => $pos,
                     'value' => $current
                 ];
                 next($chars);

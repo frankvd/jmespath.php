@@ -200,6 +200,43 @@ class TreeCompiler
         return $this->write('$value = %s;', var_export($node['value'], true));
     }
 
+    private function visit_arithmetic(array $node)
+    {
+        $left = $this->makeVar('left');
+        $prev = $this->makeVar('prev');
+        $this->write('%s = $value;', $prev);
+        $this->dispatch($node['children'][0]);
+        $this->write('%s = $value;', $left);
+        $this->write('$value = %s;', $prev);
+        $this->dispatch($node['children'][1]);
+        switch ($node['value']) {
+            case 'multiply':
+            case 'star':
+                return $this->write('$value = %s * $value;', $left);
+            case 'plus':
+                return $this->write('$value = %s + $value;', $left);
+            case 'minus':
+                return $this->write('$value = %s - $value;', $left);
+            case 'modulo':
+                return $this->write('$value = %s %% $value;', $left);
+            case 'divide':
+                return $this->write('$value = %s / $value;', $left);
+            case 'div':
+                return $this->write('$value = intdiv(%s, $value);', $left);
+        }
+    }
+
+    private function visit_arithmetic_unary(array $node)
+    {
+        $this->dispatch($node['children'][0]);
+        switch ($node['value']) {
+            case 'plus':
+                return $this->write('$value = +$value;');
+            case 'minus':
+                return $this->write('$value = -$value;');
+        }
+    }
+
     private function visit_pipe(array $node)
     {
         return $this
